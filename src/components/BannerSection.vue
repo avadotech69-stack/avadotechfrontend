@@ -42,10 +42,16 @@ const banners = ref([]);
 const current = ref(0);
 let interval = null;
 
+// ⭐ FIXED — D1 JSON format handling
 const loadBanners = async () => {
   try {
     const res = await axios.get(`${API_BASE}/banners`);
-    banners.value = res.data;
+
+    console.log("Slider banner response:", res.data);
+
+    // FIX: res.data.banners instead of res.data
+    banners.value = res.data?.banners || [];
+
   } catch (err) {
     console.error("Banner load error:", err);
   }
@@ -53,6 +59,8 @@ const loadBanners = async () => {
 
 // Auto Slide
 const startSlide = () => {
+  if (!banners.value.length) return;
+
   interval = setInterval(() => {
     current.value =
       current.value + 1 < banners.value.length ? current.value + 1 : 0;
