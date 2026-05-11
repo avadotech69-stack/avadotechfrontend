@@ -40,14 +40,44 @@
         </div>
       </div>
 
-      <!-- Right Section: Placeholder for Centering -->
-      <div class="nav-right-placeholder"></div>
+      <!-- Right Section: Placeholder for Centering / Mobile Toggle -->
+      <div class="nav-right-placeholder">
+        <button class="mobile-toggle" @click="mobileMenuOpen = !mobileMenuOpen">
+          <svg v-if="!mobileMenuOpen" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+          <svg v-else width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu" :class="{ 'is-open': mobileMenuOpen }">
+      <div class="mobile-nav-items">
+        <a 
+          v-for="(item, index) in navItems" 
+          :key="item.name"
+          :href="item.link"
+          class="mobile-nav-item"
+          :class="{ active: item.active }"
+          @click.prevent="handleNavClick(index, item.link); mobileMenuOpen = false"
+        >
+          {{ item.name }}
+        </a>
+      </div>
     </div>
   </nav>
 </template>
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue';
+
+const mobileMenuOpen = ref(false);
 
 const navItems = ref([
   { name: 'Home', link: '#home', active: true },
@@ -276,6 +306,21 @@ onMounted(() => {
   flex: 1;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+}
+
+.mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 5px;
+  z-index: 2000;
+}
+
+.mobile-menu {
+  display: none;
 }
 
 /* Mobile Responsiveness */
@@ -288,6 +333,63 @@ onMounted(() => {
   }
   .brand-name {
     display: none;
+  }
+  .mobile-toggle {
+    display: block;
+  }
+  
+  /* Mobile Menu Overlay Styles */
+  .mobile-menu {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(6, 6, 23, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 999; /* Below navbar header */
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .mobile-menu.is-open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  
+  .mobile-nav-items {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    transform: translateY(20px);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .mobile-menu.is-open .mobile-nav-items {
+    transform: translateY(0);
+  }
+  
+  .mobile-nav-item {
+    font-family: 'Oswald', sans-serif;
+    font-size: 32px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: 0.3s;
+  }
+  
+  .mobile-nav-item.active,
+  .mobile-nav-item:hover {
+    color: #a45cff;
+    text-shadow: 0 0 20px rgba(164, 92, 255, 0.5);
   }
 }
 </style>

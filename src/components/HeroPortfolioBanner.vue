@@ -251,7 +251,7 @@ onMounted(async () => {
     height: auto;
     flex-direction: column;
     text-align: center;
-    padding: 40px 0;
+    padding: 100px 5% 40px 5%;
   }
 
   .left,

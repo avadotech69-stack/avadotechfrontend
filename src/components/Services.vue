@@ -297,18 +297,39 @@ onMounted(loadServices);
 }
 
 @media (max-width: 768px) {
+  .services-section {
+    padding: 60px 0 20px;
+  }
   .section-title {
     font-size: 32px;
   }
   .slider-wrapper {
-    --image-width: 300px;
+    --image-width: 80vw;
   }
   .image-card {
-    height: 250px;
+    height: 350px;
   }
   .tabs-wrapper {
     flex-direction: column;
-    padding: 30px 5%;
+    padding: 20px 5%;
+    gap: 15px;
+  }
+  .tabs-list {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .nav-arrows {
+    margin-top: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .image-card {
+    height: 250px;
+  }
+  .tabs-list {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
   }
 }
 </style>
