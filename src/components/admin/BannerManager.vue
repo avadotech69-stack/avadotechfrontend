@@ -1,107 +1,47 @@
 <template>
-  <div class="banner-admin">
-    <h1 class="title">Banner Manager</h1>
+  <div class="page-container">
 
-    <!-- 🔹 Add / Upload Banner -->
-    <div class="card">
-      <h3>Add New Banner</h3>
+    <!-- Title -->
+    <h2 class="title">Portfolio Banner Manager</h2>
 
-      <!-- File Upload Button -->
-      <label class="file-label">
-        <span>Select Banner Image</span>
-        <input type="file" accept="image/*" @change="handleFile" />
-      </label>
+    <!-- Upload Section -->
+    <div class="upload-card">
+      <h3>Upload New Banner</h3>
+
+      <input type="file" @change="handleFile" class="file-input" />
 
       <button
-        class="btn"
-        @click="uploadImage"
-        :disabled="!selectedFile || uploading"
+        class="upload-btn"
+        :disabled="loading || !file"
+        @click="uploadBanner"
       >
-        <span v-if="!uploading">Upload to R2</span>
-        <span v-else>Uploading...</span>
+        <span v-if="loading">Uploading...</span>
+        <span v-else>Upload Banner</span>
       </button>
 
-      <div v-if="form.image_url" class="preview">
-        <p>Preview:</p>
-        <img :src="form.image_url" alt="Banner preview" />
+      <!-- Preview -->
+      <div v-if="preview" class="preview-box">
+        <img :src="preview" alt="Preview" />
       </div>
+    </div>
 
-      <input v-model="form.title" placeholder="Title (optional)" class="input" />
-      <input
-        v-model="form.button_text"
-        placeholder="Button text (optional)"
-        class="input"
-      />
-      <input
-        v-model="form.button_link"
-        placeholder="Button link (optional)"
-        class="input"
-      />
+    <!-- Banners List -->
+    <div class="grid-title">Saved Banners</div>
 
-      <button
-        class="btn primary"
-        @click="addBanner"
-        :disabled="!form.image_url || saving"
+    <div class="banner-grid">
+      <div
+        v-for="item in banners"
+        :key="item.id"
+        class="banner-card"
       >
-        <span v-if="!saving">Save Banner</span>
-        <span v-else>Saving...</span>
-      </button>
-    </div>
+        <img :src="item.image_url" alt="banner" />
 
-    <!-- 🔹 Banner List -->
-    <div class="card">
-      <h3>All Banners</h3>
-
-      <div v-if="loading">Loading banners...</div>
-
-      <div v-if="!loading && !banners.length">No banners found.</div>
-
-      <div v-for="banner in banners" :key="banner.id" class="banner-row">
-        <img :src="banner.image_url" class="thumb" />
-
-        <div class="info">
-          <p><strong>ID:</strong> {{ banner.id }}</p>
-          <p><strong>Title:</strong> {{ banner.title || "—" }}</p>
-          <p><strong>Button:</strong> {{ banner.button_text || "—" }}</p>
-          <p class="link">
-            <strong>Link:</strong> <span>{{ banner.button_link || "—" }}</span>
-          </p>
-        </div>
-
-        <div class="row-actions">
-          <button class="btn small" @click="startEdit(banner)">Edit</button>
-          <button class="btn small danger" @click="deleteBanner(banner.id)">
-            Delete
-          </button>
-        </div>
+        <button class="delete-btn" @click="deleteBanner(item.id)">
+          ✖
+        </button>
       </div>
     </div>
 
-    <!-- 🔹 Edit Modal -->
-    <div v-if="editing" class="modal">
-      <div class="modal-box">
-        <h3>Edit Banner</h3>
-
-        <img :src="editForm.image_url" class="edit-thumb" />
-
-        <input v-model="editForm.title" placeholder="Title" class="input" />
-        <input
-          v-model="editForm.button_text"
-          placeholder="Button text"
-          class="input"
-        />
-        <input
-          v-model="editForm.button_link"
-          placeholder="Button link"
-          class="input"
-        />
-
-        <div class="modal-actions">
-          <button class="btn primary" @click="updateBanner">Save</button>
-          <button class="btn danger" @click="editing = false">Cancel</button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -115,306 +55,190 @@ const API_BASE =
     : "https://avadotechbackend.onrender.com/api";
 
 const banners = ref([]);
+const file = ref(null);
+const preview = ref(null);
 const loading = ref(false);
-const uploading = ref(false);
-const saving = ref(false);
 
-const selectedFile = ref(null);
+const handleFile = (e) => {
+  file.value = e.target.files[0];
+  preview.value = URL.createObjectURL(file.value);
+};
 
-const form = ref({
-  image_url: "",
-  title: "",
-  button_text: "",
-  button_link: "",
-});
-
-const editing = ref(false);
-const editForm = ref({});
-
-// ✅ Load banners (D1 compatible)
-const loadBanners = async () => {
+const uploadBanner = async () => {
+  if (!file.value) return;
   loading.value = true;
+
   try {
-    const res = await axios.get(`${API_BASE}/banners`);
-    console.log("BANNER API RESPONSE:", res.data);
-    banners.value = res.data.banners || [];
-  } catch (err) {
-    console.error("Load banners error:", err);
-    banners.value = [];
+    // Step 1 → Upload to R2
+    const form = new FormData();
+    form.append("image", file.value);
+
+    const r2 = await axios.post(`${API_BASE}/upload`, form);
+    const imageUrl = r2.data.url;
+
+    // Step 2 → Save into DB
+    await axios.post(`${API_BASE}/portfolio-banners/add`, {
+      image_url: imageUrl,
+    });
+
+    file.value = null;
+    preview.value = null;
+
+    await loadBanners();
+  } catch (e) {
+    console.error("Upload error:", e);
   }
+
   loading.value = false;
 };
 
-onMounted(loadBanners);
-
-// File choose handler
-const handleFile = (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  selectedFile.value = file;
+const loadBanners = async () => {
+  const res = await axios.get(`${API_BASE}/portfolio-banners`);
+  banners.value = res.data;
 };
 
-// Upload to R2
-const uploadImage = async () => {
-  if (!selectedFile.value) return;
-
-  uploading.value = true;
-  try {
-    const fd = new FormData();
-    fd.append("image", selectedFile.value);
-
-    const res = await axios.post(`${API_BASE}/upload`, fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    form.value.image_url = res.data.url;
-    selectedFile.value = null;
-  } catch (err) {
-    console.error("Upload error:", err);
-    alert("Upload failed!");
-  }
-  uploading.value = false;
-};
-
-// Save banner
-const addBanner = async () => {
-  if (!form.value.image_url) return;
-
-  saving.value = true;
-  try {
-    await axios.post(`${API_BASE}/banners`, form.value);
-    form.value = { image_url: "", title: "", button_text: "", button_link: "" };
-    await loadBanners();
-  } catch (err) {
-    console.error("Save banner error:", err);
-  }
-  saving.value = false;
-};
-
-// Delete banner
 const deleteBanner = async (id) => {
-  if (!confirm("Delete banner?")) return;
+  if (!confirm("Delete this banner?")) return;
 
-  try {
-    await axios.delete(`${API_BASE}/banners/${id}`);
-    await loadBanners();
-  } catch (err) {
-    console.error("Delete error:", err);
-  }
+  await axios.delete(`${API_BASE}/portfolio-banners/${id}`);
+  await loadBanners();
 };
 
-// Edit banner
-const startEdit = (banner) => {
-  editing.value = true;
-  editForm.value = { ...banner };
-};
-
-const updateBanner = async () => {
-  try {
-    await axios.put(`${API_BASE}/banners/${editForm.value.id}`, editForm.value);
-    editing.value = false;
-    await loadBanners();
-  } catch (err) {
-    console.error("Update error:", err);
-  }
-};
+onMounted(() => {
+  loadBanners();
+});
 </script>
 
-
 <style scoped>
-
-.banner-admin {
-  padding: 20px;
-  color: #fff;
-  font-family: "Inter", sans-serif;
+/* Page wrapper */
+.page-container {
+  padding: 30px;
+  color: #ffffff;
+  background: #060617;
+  max-height: 100vh;
 }
 
+/* TITLE */
 .title {
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 20px;
-  text-align: center;
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: 25px;
+  color: #a45cff;
 }
 
-.card {
-  background: #0f0f18;
-  padding: 25px;
+/* Upload Card */
+.upload-card {
+  background: #0c0c22;
+  padding: 20px;
   border-radius: 14px;
-  margin-bottom: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0 20px rgba(145, 66, 255, 0.1);
+  margin-bottom: 35px;
+  border: 1px solid rgba(164, 92, 255, 0.2);
+  box-shadow: 0 0 20px rgba(164, 92, 255, 0.2);
 }
 
-.card h3 {
-  margin-bottom: 15px;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.file-label {
-  background: #5a1ce3;
-  padding: 10px 18px;
-  border-radius: 8px;
-  display: inline-block;
-  cursor: pointer;
-  font-weight: 600;
-  margin-bottom: 10px;
-  transition: 0.2s;
-}
-
-.file-label:hover {
-  background: #7a33ff;
-}
-
-.file-label input {
-  display: none;
-}
-
-.input {
-  width: 100%;
-  padding: 12px;
-  margin: 8px 0;
-  background: #1b1b29;
-  border: 1px solid #2a2a3d;
-  border-radius: 8px;
-  color: #fff;
-  transition: 0.2s;
-}
-
-.input:focus {
-  outline: none;
-  border-color: #7a33ff;
-  background: #232335;
-}
-
-.btn {
-  background: #29293d;
-  padding: 10px 18px;
-  border-radius: 8px;
-  color: #fff;
-  margin-top: 8px;
-  cursor: pointer;
-  transition: 0.2s;
-  border: none;
-}
-
-.btn:hover {
-  background: #35354a;
-}
-
-.btn.primary {
-  background: linear-gradient(90deg, #6a11cb, #8f2de2);
-}
-
-.btn.primary:hover {
-  opacity: 0.9;
-}
-
-.btn.small {
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-.btn.danger {
-  background: #d63031;
-}
-
-.btn.danger:hover {
-  background: #ff3d3d;
-}
-
-.preview {
+.file-input {
   margin-top: 12px;
+  margin-bottom: 12px;
 }
 
-.preview img {
-  max-width: 100%;
-  border-radius: 10px;
-  margin-top: 8px;
-  border: 2px solid #2d1a41;
-}
-
-.banner-row {
-  display: flex;
-  align-items: center;
-  background: #131320;
-  padding: 15px;
-  border-radius: 12px;
-  margin-bottom: 15px;
-  border: 1px solid #1e1e2f;
-  transition: 0.25s;
-}
-
-.banner-row:hover {
-  border-color: #7a33ff;
-  background: #181828;
-}
-
-.thumb {
-  width: 120px;
-  height: 70px;
-  object-fit: cover;
+/* Upload Button */
+.upload-btn {
+  padding: 10px 18px;
+  background: linear-gradient(90deg, #7a3fff, #a45cff);
+  color: #fff;
+  border: none;
   border-radius: 8px;
-  margin-right: 16px;
-  border: 2px solid #2c2c42;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.info {
-  flex: 1;
-  line-height: 1.3;
+.upload-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.row-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 999;
-}
-
-.modal-box {
-  background: #171722;
-  padding: 25px;
-  width: 380px;
-  border-radius: 14px;
-  border: 1px solid #2e2e42;
-  box-shadow: 0 0 20px rgba(94, 44, 255, 0.3);
-}
-
-.edit-thumb {
-  width: 100%;
-  border-radius: 10px;
-  margin-bottom: 15px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: space-between;
+/* Image Preview */
+.preview-box {
+  width: 200px;
   margin-top: 15px;
 }
 
-/* Mobile responsive */
-@media (max-width: 600px) {
-  .banner-row {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .thumb {
-    margin-bottom: 10px;
-  }
-
-  .row-actions {
-    justify-content: center;
-  }
+.preview-box img {
+  width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(122, 63, 255, 0.3);
 }
 
+/* Grid Title */
+.grid-title {
+  font-size: 20px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  color: #d6d6ff;
+}
 
+/* Banner Grid */
+.banner-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+
+  /* NEW: limit height */
+  max-height: 500px; /* তোমার ইচ্ছামতো height দিতে পারো */
+
+  overflow-y: auto;      /* vertical scroll */
+  padding-right: 8px;    /* scrollbar space fix */
+}
+
+/* scrollbar styling (optional) */
+.banner-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.banner-grid::-webkit-scrollbar-thumb {
+  background: #7a3fff;
+  border-radius: 10px;
+}
+
+.banner-grid::-webkit-scrollbar-track {
+  background: #0a0a1a;
+}
+
+.banner-card {
+  background: #0a0a1a;
+  padding: 10px;
+  border-radius: 14px;
+  position: relative;
+  border: 1px solid rgba(122, 63, 255, 0.3);
+  box-shadow: 0 0 15px rgba(122, 63, 255, 0.2);
+  transition: 0.3s;
+}
+
+.banner-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 0 25px rgba(164, 92, 255, 0.4);
+}
+
+.banner-card img {
+  width: 100%;
+  border-radius: 10px;
+}
+
+/* Delete Button */
+.delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 0, 0, 0.7);
+  border: none;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 </style>

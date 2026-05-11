@@ -1,10 +1,15 @@
 <template>
+  <Navbar />
   <router-view />
 </template>
 
 <script setup>
+import Navbar from './components/Navbar.vue';
 </script>
 
 <style>
-/* global styles */
+body {
+  margin: 0;
+  padding: 0 ;  /* এই 20px ই white space */
+}
 </style>

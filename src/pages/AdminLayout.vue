@@ -8,6 +8,8 @@
       <nav class="menu">
         <router-link to="/admin" class="menu-item">Dashboard</router-link>
         <router-link to="/admin/banners" class="menu-item">Banners</router-link>
+        <router-link to="/admin/services" class="menu-item">Services</router-link>
+        <router-link to="/admin/works" class="menu-item">Works</router-link>
       </nav>
     </aside>
 
@@ -40,6 +42,8 @@ const title = computed(() => {
   const map = {
     "/admin": "Dashboard",
     "/admin/banners": "Banner Manager",
+    "/admin/services": "Service Tab Manager",
+    "/admin/works": "Works & Showcase",
   };
   return map[route.path] || "Admin Panel";
 });
